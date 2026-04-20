@@ -8,6 +8,9 @@ struct PermissionFlowPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             header
+            if let hint = controller.panelHint, hint.isEmpty == false {
+                hintBanner(hint)
+            }
             if let primaryApp = controller.preferredAppURL {
                 AppDragItemView(url: primaryApp) { isDragging in
                     controller.setPanelDragging(isDragging)
@@ -27,6 +30,29 @@ struct PermissionFlowPanelView: View {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .stroke(.primary.opacity(0.14), lineWidth: 1)
                 )
+        )
+    }
+
+    /// Renders the host-supplied hint as a subtle warning banner so the user
+    /// notices the extra step (e.g. removing the existing entry first) before
+    /// they start dragging.
+    private func hintBanner(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.orange)
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundStyle(.primary.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(.orange.opacity(0.35), lineWidth: 1)
         )
     }
 

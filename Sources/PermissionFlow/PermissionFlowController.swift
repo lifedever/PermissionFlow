@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import ApplicationServices
 import Combine
 import SystemSettingsKit
 import SwiftUI
@@ -17,6 +18,10 @@ public final class PermissionFlowController: ObservableObject {
 
     /// The permission pane currently being guided.
     @Published public private(set) var currentPane: PermissionFlowPane?
+
+    /// Optional secondary text shown above the drag card. Hosts use this to
+    /// hint flow-specific instructions such as "remove the existing entry first".
+    @Published public private(set) var panelHint: String?
 
     /// Drives the visibility of the "reopen settings" action.
     @Published var isSettingsFrontmost = false
@@ -36,6 +41,7 @@ public final class PermissionFlowController: ObservableObject {
     private var pendingLaunchSourceFrame: CGRect?
     private var previousFrontmostApplicationPID: pid_t?
     private var previousFrontmostApplicationBundleIdentifier: String?
+    private var trustCheckTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     public init(configuration: PermissionFlowConfiguration = .init()) {
@@ -52,12 +58,14 @@ public final class PermissionFlowController: ObservableObject {
     public func authorize(
         pane: PermissionFlowPane,
         suggestedAppURLs: [URL] = [],
-        sourceFrameInScreen: CGRect? = nil
+        sourceFrameInScreen: CGRect? = nil,
+        panelHint: String? = nil
     ) {
         closeOtherActivePanelIfNeeded()
 
         rememberPreviousFrontmostApplication()
         currentPane = pane
+        self.panelHint = panelHint
         pendingLaunchSourceFrame = sourceFrameInScreen
         mergeDroppedApps(with: suggestedAppURLs)
         SystemSettings.open(url: pane.settingsURL)
@@ -65,6 +73,7 @@ public final class PermissionFlowController: ObservableObject {
         Self.activeController = self
         showPanel()
         tracker.startTracking(promptIfNeeded: configuration.promptForAccessibilityTrust)
+        startTrustCheckIfNeeded(for: pane)
     }
 
     /// Shows the panel immediately. If the target System Settings frame is
@@ -91,9 +100,12 @@ public final class PermissionFlowController: ObservableObject {
 
     public func closePanel(returnToPreviousApp: Bool = false) {
         tracker.stopTracking()
+        trustCheckTimer?.invalidate()
+        trustCheckTimer = nil
         panel?.close()
         panel = nil
         pendingLaunchSourceFrame = nil
+        panelHint = nil
 
         if Self.activeController === self {
             Self.activeController = nil
@@ -228,8 +240,37 @@ public final class PermissionFlowController: ObservableObject {
     }
 
     private func updateFrontmostAppState() {
+        let wasSettingsFrontmost = isSettingsFrontmost
         isSettingsFrontmost =
             NSWorkspace.shared.frontmostApplication?.bundleIdentifier == systemSettingsBundleIdentifier
+
+        // Mirror the panel visibility to System Settings so the helper hides
+        // when the user switches to another app and returns when they come back
+        // to settings. Skipping during drag avoids killing an active drop.
+        guard let panel, isDraggingApp == false else { return }
+        if isSettingsFrontmost {
+            panel.orderFrontRegardless()
+        } else if wasSettingsFrontmost {
+            panel.orderOut(nil)
+        }
+    }
+
+    /// Starts polling the system trust state for panes whose grant status can
+    /// be observed from the host process (currently Accessibility). The panel
+    /// closes itself the moment authorization succeeds so the user sees an
+    /// immediate confirmation of the action they just performed.
+    private func startTrustCheckIfNeeded(for pane: PermissionFlowPane) {
+        trustCheckTimer?.invalidate()
+        trustCheckTimer = nil
+        guard pane == .accessibility, AXIsProcessTrusted() == false else { return }
+
+        trustCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard AXIsProcessTrusted() else { return }
+                self.closePanel(returnToPreviousApp: true)
+            }
+        }
     }
 }
 
