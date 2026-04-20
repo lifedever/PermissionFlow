@@ -12,14 +12,15 @@ The `pastememo-enhancements` branch adds three optional improvements on top of u
 
 2. **Auto-close on accessibility grant** — when `pane == .accessibility`, the controller polls `AXIsProcessTrusted()` and closes the panel automatically once the grant succeeds. Other panes are unchanged.
 
-3. **Optional `panelHint`** — a new `panelHint:` parameter on `authorize(...)`. The supplied string is rendered as a small warning banner above the drag card. Useful for re-authorization flows that need to remind the user to remove a stale entry before dragging.
+3. **Optional `panelHint` and `panelTitle`** — two new optional parameters on `authorize(...)`. `panelHint` renders a small warning banner above the drag card; `panelTitle` overrides the default header text. Useful when the pane is not actually a sandbox permission (for example Accessibility) or when the host wants to remind the user to remove a stale entry before dragging.
 
 ```swift
 controller.authorize(
     pane: .accessibility,
     suggestedAppURLs: [Bundle.main.bundleURL],
     sourceFrameInScreen: clickFrame,
-    panelHint: "Click − to remove the existing entry first, then drag the new version below."
+    panelHint: "Click − to remove the existing entry first, then drag the new version below.",
+    panelTitle: "Accessibility Permission"
 )
 ```
 

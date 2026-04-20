@@ -23,6 +23,11 @@ public final class PermissionFlowController: ObservableObject {
     /// hint flow-specific instructions such as "remove the existing entry first".
     @Published public private(set) var panelHint: String?
 
+    /// Optional title that overrides the default "Sandbox Permission" string.
+    /// Useful when the pane is not actually a sandbox-related permission, e.g.
+    /// Accessibility, where a more accurate title improves clarity.
+    @Published public private(set) var panelTitle: String?
+
     /// Drives the visibility of the "reopen settings" action.
     @Published var isSettingsFrontmost = false
 
@@ -59,13 +64,15 @@ public final class PermissionFlowController: ObservableObject {
         pane: PermissionFlowPane,
         suggestedAppURLs: [URL] = [],
         sourceFrameInScreen: CGRect? = nil,
-        panelHint: String? = nil
+        panelHint: String? = nil,
+        panelTitle: String? = nil
     ) {
         closeOtherActivePanelIfNeeded()
 
         rememberPreviousFrontmostApplication()
         currentPane = pane
         self.panelHint = panelHint
+        self.panelTitle = panelTitle
         pendingLaunchSourceFrame = sourceFrameInScreen
         mergeDroppedApps(with: suggestedAppURLs)
         SystemSettings.open(url: pane.settingsURL)
@@ -106,6 +113,7 @@ public final class PermissionFlowController: ObservableObject {
         panel = nil
         pendingLaunchSourceFrame = nil
         panelHint = nil
+        panelTitle = nil
 
         if Self.activeController === self {
             Self.activeController = nil

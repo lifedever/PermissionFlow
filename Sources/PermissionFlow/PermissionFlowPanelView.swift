@@ -60,8 +60,13 @@ struct PermissionFlowPanelView: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 3) {
             HeaderDirectionIcon(isDragging: controller.isDraggingApp)
-            Text("permission_flow.panel.title", bundle: .module)
-                .font(.system(size: 16, weight: .semibold))
+            if let title = controller.panelTitle, title.isEmpty == false {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+            } else {
+                Text("permission_flow.panel.title", bundle: .module)
+                    .font(.system(size: 16, weight: .semibold))
+            }
             Spacer()
             HStack(alignment: .top, spacing: 3) {
                 if controller.isSettingsFrontmost == false {
