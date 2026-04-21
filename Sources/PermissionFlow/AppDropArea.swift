@@ -29,9 +29,17 @@ final class AppDragSourceView: NSView, NSDraggingSource {
     /// Tells the panel when it should temporarily become mouse-transparent.
     var onDragStateChange: ((Bool) -> Void)?
 
+    private var trackingArea: NSTrackingArea?
+    private var isHovering = false {
+        didSet {
+            guard oldValue != isHovering else { return }
+            renderCard()
+        }
+    }
+
     init(url: URL) {
         self.url = url
-        self.hostingView = NSHostingView(rootView: AnyView(AppDragCardContent(url: url).allowsHitTesting(false)))
+        self.hostingView = NSHostingView(rootView: AnyView(AppDragCardContent(url: url, isHovering: false).allowsHitTesting(false)))
         super.init(frame: .zero)
 
         hostingView.translatesAutoresizingMaskIntoConstraints = false
@@ -51,8 +59,12 @@ final class AppDragSourceView: NSView, NSDraggingSource {
 
     func update(url: URL) {
         self.url = url
-        hostingView.rootView = AnyView(AppDragCardContent(url: url).allowsHitTesting(false))
+        renderCard()
         invalidateIntrinsicContentSize()
+    }
+
+    private func renderCard() {
+        hostingView.rootView = AnyView(AppDragCardContent(url: url, isHovering: isHovering).allowsHitTesting(false))
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -65,9 +77,35 @@ final class AppDragSourceView: NSView, NSDraggingSource {
         return NSSize(width: NSView.noIntrinsicMetric, height: max(88, fitting.height))
     }
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect, .cursorUpdate],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovering = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovering = false
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        (hasBegunDragging ? NSCursor.closedHand : NSCursor.openHand).set()
+    }
+
     override func mouseDown(with event: NSEvent) {
         mouseDownPoint = convert(event.locationInWindow, from: nil)
         hasBegunDragging = false
+        NSCursor.closedHand.set()
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -84,6 +122,7 @@ final class AppDragSourceView: NSView, NSDraggingSource {
     override func mouseUp(with event: NSEvent) {
         mouseDownPoint = nil
         hasBegunDragging = false
+        (isHovering ? NSCursor.openHand : NSCursor.arrow).set()
     }
 
     func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
@@ -161,6 +200,7 @@ private final class AppBundlePasteboardWriter: NSObject, NSPasteboardWriting {
 @available(macOS 13.0, *)
 private struct AppDragCardContent: View {
     let url: URL
+    let isHovering: Bool
 
     var body: some View {
         // The surrounding AppKit view owns the drag gesture. This SwiftUI view
@@ -191,11 +231,18 @@ private struct AppDragCardContent: View {
             .foregroundStyle(.secondary)
         }
         .padding(8)
-        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(
+            Color(nsColor: .controlBackgroundColor),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(.white.opacity(0.20), style: StrokeStyle(lineWidth: 1, dash: [6, 6]))
+                .stroke(
+                    .primary.opacity(isHovering ? 0.42 : 0.22),
+                    style: StrokeStyle(lineWidth: 1, dash: [6, 6])
+                )
         )
+        .animation(.easeOut(duration: 0.15), value: isHovering)
     }
 }
 #endif
