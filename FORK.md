@@ -26,6 +26,12 @@ controller.authorize(
 
 All changes are additive and backward-compatible with upstream call sites.
 
+## Versioning & Release Policy
+
+This fork is released via SemVer git tags (starting at `0.1.0`). Consumers should depend on a tag with `from:` rather than pinning to a commit revision or a branch.
+
+See [VERSIONING.md](./VERSIONING.md) ([中文](./VERSIONING.zh.md)) for the full policy.
+
 ## Syncing with upstream
 
 ```bash

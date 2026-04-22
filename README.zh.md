@@ -75,7 +75,7 @@ PermissionFlow
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/PermissionFlow.git", from: "1.0.0")
+    .package(url: "https://github.com/lifedever/PermissionFlow.git", from: "0.1.0")
 ]
 ```
 
