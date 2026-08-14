@@ -64,7 +64,7 @@ struct PermissionFlowPanelView: View {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
             } else {
-                Text("permission_flow.panel.title", bundle: .module)
+                Text("permission_flow.panel.title", bundle: .permissionFlowResources)
                     .font(.system(size: 16, weight: .semibold))
             }
             Spacer()
