@@ -73,8 +73,11 @@ final class AppDragSourceView: NSView, NSDraggingSource {
     }
 
     override var intrinsicContentSize: NSSize {
+        // macOS 26 上嵌套 NSHostingView 的 fittingSize 会返回数百 pt 的病态值,
+        // 经此传导整个浮层被撑到 ~500pt 高、垂出屏幕底外。卡片是固定结构
+        // (40pt 图标 + 两行文本),高度夹在合理区间内,不再无条件信任测量。
         let fitting = hostingView.fittingSize
-        return NSSize(width: NSView.noIntrinsicMetric, height: max(88, fitting.height))
+        return NSSize(width: NSView.noIntrinsicMetric, height: min(max(88, fitting.height), 120))
     }
 
     override func updateTrackingAreas() {

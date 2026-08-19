@@ -17,6 +17,9 @@ final class FloatingDropPanel: NSPanel {
     private let sidebarWidth: CGFloat = 230
     private let screenInset: CGFloat = 12
     private let minimumPanelHeight: CGFloat = 96
+    /// 内容结构固定(header + hint + 拖拽卡),自然高度 ~170pt;上限是对
+    /// macOS 26 病态测量值的保险杠,防止面板再次被量爆后移出屏幕。
+    private let maximumPanelHeight: CGFloat = 320
     private let sizingHeightLimit: CGFloat = 4096
 
     /// Launch animation constants tuned to feel responsive without making the
@@ -56,6 +59,10 @@ final class FloatingDropPanel: NSPanel {
         animationBehavior = .utilityWindow
 
         hostingView.translatesAutoresizingMaskIntoConstraints = false
+        // 禁用 SwiftUI 驱动的窗口自动改尺寸:macOS 26 上它会按病态的测量值
+        // 把窗口从顶边锚定撑高,悄悄覆盖 targetFrame 已 clamp 好的位置,
+        // 面板随之滑出屏幕。窗口尺寸只由 measuredPanelHeight + setFrame 决定。
+        hostingView.sizingOptions = []
         contentView = hostingView
         setContentSize(CGSize(width: initialPanelWidth, height: measuredPanelHeight(for: initialPanelWidth)))
     }
@@ -244,7 +251,7 @@ final class FloatingDropPanel: NSPanel {
     private func measuredPanelHeight(for width: CGFloat) -> CGFloat {
         sizingView.setFrameSize(NSSize(width: width, height: sizingHeightLimit))
         sizingView.layoutSubtreeIfNeeded()
-        return max(minimumPanelHeight, sizingView.fittingSize.height)
+        return min(max(minimumPanelHeight, sizingView.fittingSize.height), maximumPanelHeight)
     }
 
     /// Advances the current launch animation frame-by-frame until the panel
